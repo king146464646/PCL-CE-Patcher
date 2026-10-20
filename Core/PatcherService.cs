@@ -152,7 +152,7 @@ namespace PCL_CE_Patcher.Core
 
                     string relPath = Path.GetRelativePath(tempDir, f);
                     byte[] data = File.ReadAllBytes(f);
-                    var type = PatcherUtils.DetectFileType(relPath);
+                    var type = PatcherUtils.DetectFileType(relPath, f);
                     newManifest.Files.Add(new BundleFile(relPath, type, new DataSegment(data)));
                 }
 
