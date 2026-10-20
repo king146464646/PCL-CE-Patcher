@@ -1,0 +1,37 @@
+﻿## [Visual Studio / .NET]
+# 忽略编译产物文件夹
+bin/
+obj/
+
+# 忽略 VS 自动生成的元数据和缓存
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## [Build / Publish]
+# 忽略发布输出文件夹
+Publish/
+# 如果你有特殊的构建脚本产生的输出
+__PUBLISH__/
+
+## [Temporary Files]
+# 忽略日志文件
+*.log
+# 忽略解包过程中可能产生的临时目录（如果你代码里有用到的话）
+temp/
+tmp/
+
+## [OS Specific]
+# 忽略系统自动生成的文件
+.DS_Store
+Thumbs.db
+
+## [Custom for PCL-CE-Patcher-Next]
+# 排除本地测试用的二进制文件
+# *.exe
+# 但要保留 Assets 下的模板和 Resources 下的图标
+!Assets/CleanHost.exe
+!Resources/icon.ico
