@@ -109,6 +109,42 @@ namespace PCL_CE_Patcher.Core
                      ConfigService.Log("No patches were applied! The output may be identical to input.", "WARN");
                 }
 
+                // 3.5 Patch PCL.Core.dll（配置默认值、遥测等）
+                var corePatches = GetCorePatchesForVersion(version);
+                if (corePatches.Count > 0)
+                {
+                    var coreDlls = Directory.GetFiles(tempDir, "PCL.Core.dll", SearchOption.AllDirectories);
+                    if (coreDlls.Length > 0)
+                    {
+                        ConfigService.Log($"Targeted Core DLL: {coreDlls[0]}");
+                        var coreModule = ModuleDefinition.FromFile(coreDlls[0]);
+                        bool anyCorePatched = false;
+
+                        foreach (var patch in corePatches)
+                        {
+                            if (patch.Apply(coreModule))
+                            {
+                                ConfigService.Log($"Applied: {patch.Name}");
+                                anyCorePatched = true;
+                            }
+                            else
+                            {
+                                ConfigService.Log($"Skipped/Failed: {patch.Name}", "WARN");
+                            }
+                        }
+
+                        if (anyCorePatched)
+                        {
+                            coreModule.Write(coreDlls[0]);
+                            ConfigService.Log("Core DLL patched and saved.");
+                        }
+                    }
+                    else
+                    {
+                        ConfigService.Log("PCL.Core.dll not found in bundle, core patches skipped.", "WARN");
+                    }
+                }
+
                 // 4. Prepare Host
                 ConfigService.Log("Transplanting resources & settings GUI...");
                 var originalPe = PEFile.FromFile(inputExe);
@@ -206,10 +242,26 @@ namespace PCL_CE_Patcher.Core
                 {
                     new RemovePrecheckPatch(),
                     new UnlockProfilePatch(),
-                    new RemoveMicrosoftHintPatch()
+                    new RemoveMicrosoftHintPatch(),
+                    new RemoveRegionRestrictionPatch(),
+                    new RemoveTelemetryDialogPatch(),
+                    new RemoveTelemetrySettingPatch()
                 };
             }
             // Future versions can be added here
+            return new List<IPatch>();
+        }
+
+        private List<IPatch> GetCorePatchesForVersion(string version)
+        {
+            if (version == "2.15.1")
+            {
+                return new List<IPatch>
+                {
+                    new ChangeDefaultConfigPatch(),
+                    new RemoveTelemetryPatch()
+                };
+            }
             return new List<IPatch>();
         }
 
