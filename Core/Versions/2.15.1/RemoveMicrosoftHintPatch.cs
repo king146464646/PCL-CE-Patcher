@@ -30,7 +30,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             {
                 var instr = instructions[i];
                 if (instr.OpCode.Code == CilCode.Ldfld &&
-                    instr.Operand is IFieldDefOrRef field &&
+                    instr.Operand is IFieldDescriptor field &&
                     field.Name == "HintMicrosoft")
                 {
                     ldfldIndex = i;
