@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using AsmResolver.DotNet;
+using AsmResolver.DotNet.Signatures;
+using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using PCL_CE_Patcher.Core.Patches;
 
@@ -11,6 +13,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
     ///     1. 删除 PageSetupLauncherMisc.Reload 中对 CheckSystemTelemetry.Checked 的整段赋值指令（不再读写遥测配置）；
     ///     2. 在 Reload 开头插入 (CheckSystemTelemetry.Parent as Panel)?.Children.Remove(CheckSystemTelemetry)，
     ///        将复选框从可视化树中真正移除，而非仅仅隐藏。
+    ///     WPF 成员引用通过 ReferenceImporter 手工构造，不依赖模块中恰好已导入的引用。
     /// </summary>
     public class RemoveTelemetrySettingPatch : IPatch
     {
@@ -96,62 +99,49 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
         ///     在 Reload 开头插入 (CheckSystemTelemetry.Parent as Panel)?.Children.Remove(CheckSystemTelemetry)：
         ///       ldarg.0; ldfld CheckSystemTelemetry;
         ///       callvirt get_Parent; isinst Panel;
-        ///       dup; brfalse.s SKIP;
-        ///       callvirt get_Children;
-        ///       ldarg.0; ldfld CheckSystemTelemetry;
-        ///       callvirt UIElementCollection::Remove;
-        ///     SKIP:
-        ///     WPF 方法引用复用模块内已导入的引用。
+        ///       dup; brtrue.s HAS_PANEL; pop; br.s SKIP;
+        ///     HAS_PANEL:
+        ///       callvirt get_Children; ldarg.0; ldfld CheckSystemTelemetry; callvirt UIElementCollection::Remove;
+        ///     SKIP: nop
+        ///     两条路径均不残留栈值；重复执行 Reload 时 Parent 已为 null，序列安全跳过。
+        ///     WPF 引用经 ReferenceImporter 构造导入，不依赖模块已有的成员引用。
         /// </summary>
         private static bool DetachCheckBox(ModuleDefinition module, IList<CilInstruction> instructions, IFieldDescriptor checkBoxField)
         {
-            IMethodDefOrRef? getParent = null;
-            IMethodDefOrRef? getChildren = null;
-            IMethodDefOrRef? removeFromCollection = null;
-            TypeReference? panelType = null;
+            var presentationFramework = module.AssemblyReferences
+                .FirstOrDefault(reference => reference.Name == "PresentationFramework");
+            if (presentationFramework == null) return false;
 
-            foreach (var memberRef in module.GetImportedMemberReferences())
-            {
-                if (memberRef is not IMethodDefOrRef methodRef) continue;
+            var dependencyObjectRef = new TypeReference(module, presentationFramework, "System.Windows", "DependencyObject");
+            var uiElementRef = new TypeReference(module, presentationFramework, "System.Windows", "UIElement");
+            var panelRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "Panel");
+            var collectionRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "UIElementCollection");
 
-                if (getParent == null &&
-                    memberRef.Name == "get_Parent" &&
-                    memberRef.Parent is TypeReference dependencyObject && dependencyObject.Name == "DependencyObject")
-                {
-                    getParent = methodRef;
-                }
-                else if (getChildren == null &&
-                         memberRef.Name == "get_Children" &&
-                         memberRef.Parent is TypeReference panel && panel.Name == "Panel")
-                {
-                    getChildren = methodRef;
-                    panelType = panel;
-                }
-                else if (removeFromCollection == null &&
-                         memberRef.Name == "Remove" &&
-                         memberRef.Parent is TypeReference collection && collection.Name == "UIElementCollection")
-                {
-                    removeFromCollection = methodRef;
-                }
+            var importer = new ReferenceImporter(module);
+            var getParent = importer.ImportMethod(new MemberReference(dependencyObjectRef, "get_Parent",
+                MethodSignature.CreateInstance(new TypeDefOrRefSignature(dependencyObjectRef))));
+            var getChildren = importer.ImportMethod(new MemberReference(panelRef, "get_Children",
+                MethodSignature.CreateInstance(new TypeDefOrRefSignature(collectionRef))));
+            var removeFromCollection = importer.ImportMethod(new MemberReference(collectionRef, "Remove",
+                MethodSignature.CreateInstance(module.CorLibTypeFactory.Void, new TypeDefOrRefSignature(uiElementRef))));
+            var panelType = importer.ImportType(panelRef);
 
-                if (getParent != null && getChildren != null && removeFromCollection != null) break;
-            }
-
-            if (getParent == null || getChildren == null || removeFromCollection == null || panelType == null)
-                return false;
-
-            var skipTarget = instructions[0];
+            var hasPanelTarget = new CilInstruction(CilOpCodes.Callvirt, getChildren);
+            var skipTarget = new CilInstruction(CilOpCodes.Nop);
 
             instructions.Insert(0, new CilInstruction(CilOpCodes.Ldarg_0));
             instructions.Insert(1, new CilInstruction(CilOpCodes.Ldfld, checkBoxField));
             instructions.Insert(2, new CilInstruction(CilOpCodes.Callvirt, getParent));
             instructions.Insert(3, new CilInstruction(CilOpCodes.Isinst, panelType));
             instructions.Insert(4, new CilInstruction(CilOpCodes.Dup));
-            instructions.Insert(5, new CilInstruction(CilOpCodes.Brfalse_S, skipTarget));
-            instructions.Insert(6, new CilInstruction(CilOpCodes.Callvirt, getChildren));
-            instructions.Insert(7, new CilInstruction(CilOpCodes.Ldarg_0));
-            instructions.Insert(8, new CilInstruction(CilOpCodes.Ldfld, checkBoxField));
-            instructions.Insert(9, new CilInstruction(CilOpCodes.Callvirt, removeFromCollection));
+            instructions.Insert(5, new CilInstruction(CilOpCodes.Brtrue_S, hasPanelTarget));
+            instructions.Insert(6, new CilInstruction(CilOpCodes.Pop));
+            instructions.Insert(7, new CilInstruction(CilOpCodes.Br_S, skipTarget));
+            instructions.Insert(8, hasPanelTarget);
+            instructions.Insert(9, new CilInstruction(CilOpCodes.Ldarg_0));
+            instructions.Insert(10, new CilInstruction(CilOpCodes.Ldfld, checkBoxField));
+            instructions.Insert(11, new CilInstruction(CilOpCodes.Callvirt, removeFromCollection));
+            instructions.Insert(12, skipTarget);
 
             return true;
         }
