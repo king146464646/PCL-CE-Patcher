@@ -110,10 +110,13 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
         {
             var presentationFramework = module.AssemblyReferences
                 .FirstOrDefault(reference => reference.Name == "PresentationFramework");
-            if (presentationFramework == null) return false;
+            var windowsBase = module.AssemblyReferences
+                .FirstOrDefault(reference => reference.Name == "WindowsBase");
+            if (presentationFramework == null || windowsBase == null) return false;
 
-            var dependencyObjectRef = new TypeReference(module, presentationFramework, "System.Windows", "DependencyObject");
-            var uiElementRef = new TypeReference(module, presentationFramework, "System.Windows", "UIElement");
+            // DependencyObject / UIElement 定义于 WindowsBase；Panel / UIElementCollection 定义于 PresentationFramework
+            var dependencyObjectRef = new TypeReference(module, windowsBase, "System.Windows", "DependencyObject");
+            var uiElementRef = new TypeReference(module, windowsBase, "System.Windows", "UIElement");
             var panelRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "Panel");
             var collectionRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "UIElementCollection");
 
