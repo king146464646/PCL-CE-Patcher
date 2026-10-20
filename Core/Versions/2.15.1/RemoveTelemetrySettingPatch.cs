@@ -126,6 +126,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
                 MethodSignature.CreateInstance(module.CorLibTypeFactory.Void, new TypeDefOrRefSignature(uiElementRef))));
             var panelType = importer.ImportType(panelRef);
 
+            // AsmResolver 要求分支指令的操作数为 ICilLabel，需用 CilInstructionLabel 包装目标指令
             var hasPanelTarget = new CilInstruction(CilOpCodes.Callvirt, getChildren);
             var skipTarget = new CilInstruction(CilOpCodes.Nop);
 
@@ -134,9 +135,9 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             instructions.Insert(2, new CilInstruction(CilOpCodes.Callvirt, getParent));
             instructions.Insert(3, new CilInstruction(CilOpCodes.Isinst, panelType));
             instructions.Insert(4, new CilInstruction(CilOpCodes.Dup));
-            instructions.Insert(5, new CilInstruction(CilOpCodes.Brtrue_S, hasPanelTarget));
+            instructions.Insert(5, new CilInstruction(CilOpCodes.Brtrue_S, new CilInstructionLabel(hasPanelTarget)));
             instructions.Insert(6, new CilInstruction(CilOpCodes.Pop));
-            instructions.Insert(7, new CilInstruction(CilOpCodes.Br_S, skipTarget));
+            instructions.Insert(7, new CilInstruction(CilOpCodes.Br_S, new CilInstructionLabel(skipTarget)));
             instructions.Insert(8, hasPanelTarget);
             instructions.Insert(9, new CilInstruction(CilOpCodes.Ldarg_0));
             instructions.Insert(10, new CilInstruction(CilOpCodes.Ldfld, checkBoxField));
