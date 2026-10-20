@@ -205,7 +205,8 @@ namespace PCL_CE_Patcher.Core
                 return new List<IPatch>
                 {
                     new RemovePrecheckPatch(),
-                    new UnlockProfilePatch()
+                    new UnlockProfilePatch(),
+                    new RemoveMicrosoftHintPatch()
                 };
             }
             // Future versions can be added here
