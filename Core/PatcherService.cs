@@ -116,24 +116,26 @@ namespace PCL_CE_Patcher.Core
 
                 if (rsrcSection != null)
                 {
-                    uint align = cleanPe.OptionalHeader.SectionAlignment;
-                    var last = cleanPe.Sections.Last();
-                    uint newRva = PatcherUtils.Align(last.Rva + last.GetVirtualSize(), align);
-
-                    // 提取原版资源原始字节，并修正内部的绝对 RVA 指针。
-                    // 资源目录中 IMAGE_RESOURCE_DATA_ENTRY.OffsetToData 是绝对 RVA，
-                    // 把资源平移到新节后必须加上 delta（newRva - 原Rva），
-                    // 否则加载器解析资源时读到越界地址，Windows 会报
-                    // “%1 不是有效的 Win32 应用程序”（错误 193），表现为“识别不了是 exe”。
                     byte[] rsrcBytes = ExtractSectionBytes(rsrcSection);
-                    int delta = unchecked((int)(newRva - rsrcSection.Rva));
-                    FixResourceDirectoryRvas(rsrcBytes, delta);
 
                     var newRsrc = new PESection(".rsrc_n", rsrcSection.Characteristics, new DataSegment(rsrcBytes));
                     cleanPe.Sections.Add(newRsrc);
 
-                    var dataDirs = cleanPe.OptionalHeader.DataDirectories;
-                    dataDirs[(int)DataDirectoryIndex.ResourceDirectory] = new DataDirectory(newRva, newRsrc.GetVirtualSize());
+                    // 必须先对齐分配好各节 RVA，再写 Resource 目录。
+                    // PEFile.Write → UpdateHeaders → AlignDataDirectoryEntries 会用新增节的旧头
+                    //（Add 后未对齐时 RVA=0）去判断“目录落在哪个节内”：0 ≤ 目录RVA < 0+节大小 恒成立，
+                    // 于是给目录 RVA 再加上节的 RVA（如 0x29000 → 0x52000），
+                    // 加载器据此解析资源会越界，Windows 报错误 193“%1 不是有效的 Win32 应用程序”，
+                    // 表现为“识别不了是 exe”。先对齐后旧头与新 RVA 一致，delta 为 0，目录不再被改动。
+                    cleanPe.AlignSections();
+
+                    // 资源目录中 IMAGE_RESOURCE_DATA_ENTRY.OffsetToData 是绝对 RVA，
+                    // 资源平移到新节后必须按 delta（新Rva - 原Rva）修正，否则加载器同样会读到越界地址。
+                    int delta = unchecked((int)(newRsrc.Rva - rsrcSection.Rva));
+                    FixResourceDirectoryRvas(rsrcBytes, delta);
+
+                    cleanPe.OptionalHeader.DataDirectories[(int)DataDirectoryIndex.ResourceDirectory]
+                        = new DataDirectory(newRsrc.Rva, newRsrc.GetVirtualSize());
                 }
 
                 cleanPe.OptionalHeader.SubSystem = SubSystem.WindowsGui;
@@ -159,11 +161,34 @@ namespace PCL_CE_Patcher.Core
 
                 // 6. Post Process
                 var finalPe = PEFile.FromFile(outputExe);
+                bool needRewrite = false;
+
                 if (finalPe.OptionalHeader.SubSystem != SubSystem.WindowsGui)
                 {
                     finalPe.OptionalHeader.SubSystem = SubSystem.WindowsGui;
-                    finalPe.Write(outputExe);
+                    needRewrite = true;
                 }
+
+                // 兜底：确保 Resource 目录指向 .rsrc_n 的实际位置。
+                // 若目录 RVA 与节 RVA 不一致（资源解析必然越界，Windows 报错误 193），强制修正。
+                var finalRsrc = finalPe.Sections.FirstOrDefault(s => s.Name == ".rsrc_n");
+                if (finalRsrc != null)
+                {
+                    var dataDirs = finalPe.OptionalHeader.DataDirectories;
+                    var resDir = dataDirs[(int)DataDirectoryIndex.ResourceDirectory];
+                    if (resDir.VirtualAddress != finalRsrc.Rva)
+                    {
+                        ConfigService.Log(
+                            $"Resource directory mismatch: 0x{resDir.VirtualAddress:X} -> 0x{finalRsrc.Rva:X}, fixing...",
+                            "WARN");
+                        dataDirs[(int)DataDirectoryIndex.ResourceDirectory] =
+                            new DataDirectory(finalRsrc.Rva, finalRsrc.GetVirtualSize());
+                        needRewrite = true;
+                    }
+                }
+
+                if (needRewrite)
+                    finalPe.Write(outputExe);
 
                 ConfigService.Log($"Success! Output: {outputExe}");
             }
