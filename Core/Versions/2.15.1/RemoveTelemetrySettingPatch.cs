@@ -114,14 +114,16 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
                 .FirstOrDefault(reference => reference.Name == "WindowsBase");
             if (presentationFramework == null || windowsBase == null) return false;
 
-            // DependencyObject / UIElement 定义于 WindowsBase；Panel / UIElementCollection 定义于 PresentationFramework
+            // DependencyObject / UIElement 定义于 WindowsBase；FrameworkElement / Panel / UIElementCollection 定义于 PresentationFramework
+            // 注意：Parent 属性定义于 FrameworkElement（返回 DependencyObject），并非 DependencyObject 本身
             var dependencyObjectRef = new TypeReference(module, windowsBase, "System.Windows", "DependencyObject");
             var uiElementRef = new TypeReference(module, windowsBase, "System.Windows", "UIElement");
+            var frameworkElementRef = new TypeReference(module, presentationFramework, "System.Windows", "FrameworkElement");
             var panelRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "Panel");
             var collectionRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "UIElementCollection");
 
             var importer = new ReferenceImporter(module);
-            var getParent = importer.ImportMethod(new MemberReference(dependencyObjectRef, "get_Parent",
+            var getParent = importer.ImportMethod(new MemberReference(frameworkElementRef, "get_Parent",
                 MethodSignature.CreateInstance(new TypeDefOrRefSignature(dependencyObjectRef))));
             var getChildren = importer.ImportMethod(new MemberReference(panelRef, "get_Children",
                 MethodSignature.CreateInstance(new TypeDefOrRefSignature(collectionRef))));
