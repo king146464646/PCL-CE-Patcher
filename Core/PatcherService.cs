@@ -120,7 +120,16 @@ namespace PCL_CE_Patcher.Core
                     var last = cleanPe.Sections.Last();
                     uint newRva = PatcherUtils.Align(last.Rva + last.GetVirtualSize(), align);
 
-                    var newRsrc = new PESection(".rsrc_n", rsrcSection.Characteristics, rsrcSection.Contents);
+                    // 提取原版资源原始字节，并修正内部的绝对 RVA 指针。
+                    // 资源目录中 IMAGE_RESOURCE_DATA_ENTRY.OffsetToData 是绝对 RVA，
+                    // 把资源平移到新节后必须加上 delta（newRva - 原Rva），
+                    // 否则加载器解析资源时读到越界地址，Windows 会报
+                    // “%1 不是有效的 Win32 应用程序”（错误 193），表现为“识别不了是 exe”。
+                    byte[] rsrcBytes = ExtractSectionBytes(rsrcSection);
+                    int delta = unchecked((int)(newRva - rsrcSection.Rva));
+                    FixResourceDirectoryRvas(rsrcBytes, delta);
+
+                    var newRsrc = new PESection(".rsrc_n", rsrcSection.Characteristics, new DataSegment(rsrcBytes));
                     cleanPe.Sections.Add(newRsrc);
 
                     var dataDirs = cleanPe.OptionalHeader.DataDirectories;
@@ -176,6 +185,65 @@ namespace PCL_CE_Patcher.Core
             }
             // Future versions can be added here
             return new List<IPatch>();
+        }
+
+        /// <summary>把某个 PE 节的原始数据抽取为字节数组。</summary>
+        private static byte[] ExtractSectionBytes(PESection section)
+        {
+            using var ms = new MemoryStream();
+            var writer = new BinaryStreamWriter(ms);
+            section.Contents?.Write(writer);
+            return ms.ToArray();
+        }
+
+        /// <summary>
+        /// 修正 PE 资源目录中所有 IMAGE_RESOURCE_DATA_ENTRY.OffsetToData（绝对 RVA）。
+        /// 目录条目（IMAGE_RESOURCE_DIRECTORY_ENTRY）里的偏移是相对资源根的，平移时无需改动；
+        /// 只有数据项中的绝对 RVA 需要加上 delta 才能继续指向正确的资源内容。
+        /// </summary>
+        private static void FixResourceDirectoryRvas(byte[] data, int delta)
+        {
+            if (data.Length < 16 || delta == 0)
+                return;
+
+            var visited = new HashSet<int>();
+
+            void WalkDirectory(int dirOffset)
+            {
+                if (dirOffset < 0 || dirOffset + 16 > data.Length || !visited.Add(dirOffset))
+                    return;
+
+                int named = BitConverter.ToUInt16(data, dirOffset + 12);
+                int idCount = BitConverter.ToUInt16(data, dirOffset + 14);
+                int entryCount = named + idCount;
+                int entriesOffset = dirOffset + 16;
+
+                for (int i = 0; i < entryCount; i++)
+                {
+                    int entryOffset = entriesOffset + i * 8;
+                    if (entryOffset + 8 > data.Length)
+                        return;
+
+                    uint offsetToData = BitConverter.ToUInt32(data, entryOffset + 4);
+                    bool isSubdirectory = (offsetToData & 0x80000000) != 0;
+                    int target = (int)(offsetToData & 0x7FFFFFFF);
+
+                    if (isSubdirectory)
+                    {
+                        WalkDirectory(target);
+                    }
+                    else if (target >= 0 && target + 4 <= data.Length)
+                    {
+                        // 数据项：OffsetToData 是绝对 RVA，需按 delta 平移
+                        uint oldRva = BitConverter.ToUInt32(data, target);
+                        uint newRva = unchecked((uint)((int)oldRva + delta));
+                        byte[] bytes = BitConverter.GetBytes(newRva);
+                        Array.Copy(bytes, 0, data, target, 4);
+                    }
+                }
+            }
+
+            WalkDirectory(0);
         }
 
         private PEFile? LoadCleanHost()
