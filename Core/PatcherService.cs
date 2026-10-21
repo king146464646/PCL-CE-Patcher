@@ -245,7 +245,8 @@ namespace PCL_CE_Patcher.Core
                     new RemoveMicrosoftHintPatch(),
                     new RemoveRegionRestrictionPatch(),
                     new RemoveTelemetryDialogPatch(),
-                    new RemoveTelemetrySettingPatch()
+                    new RemoveTelemetrySettingPatch(),
+                    new FixInstanceResetOptiFinePatch()
                 };
             }
             // Future versions can be added here
