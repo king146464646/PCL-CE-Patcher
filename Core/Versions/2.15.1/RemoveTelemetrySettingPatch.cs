@@ -110,14 +110,18 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
         {
             var presentationFramework = module.AssemblyReferences
                 .FirstOrDefault(reference => reference.Name == "PresentationFramework");
+            var presentationCore = module.AssemblyReferences
+                .FirstOrDefault(reference => reference.Name == "PresentationCore");
             var windowsBase = module.AssemblyReferences
                 .FirstOrDefault(reference => reference.Name == "WindowsBase");
-            if (presentationFramework == null || windowsBase == null) return false;
+            if (presentationFramework == null || presentationCore == null || windowsBase == null) return false;
 
-            // DependencyObject / UIElement 定义于 WindowsBase；FrameworkElement / Panel / UIElementCollection 定义于 PresentationFramework
+            // 程序集归属（已逐一反射验证）：
+            //   DependencyObject → WindowsBase；UIElement → PresentationCore；
+            //   FrameworkElement / Panel / UIElementCollection → PresentationFramework
             // 注意：Parent 属性定义于 FrameworkElement（返回 DependencyObject），并非 DependencyObject 本身
             var dependencyObjectRef = new TypeReference(module, windowsBase, "System.Windows", "DependencyObject");
-            var uiElementRef = new TypeReference(module, windowsBase, "System.Windows", "UIElement");
+            var uiElementRef = new TypeReference(module, presentationCore, "System.Windows", "UIElement");
             var frameworkElementRef = new TypeReference(module, presentationFramework, "System.Windows", "FrameworkElement");
             var panelRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "Panel");
             var collectionRef = new TypeReference(module, presentationFramework, "System.Windows.Controls", "UIElementCollection");
