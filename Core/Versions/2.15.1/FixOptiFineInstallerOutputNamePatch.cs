@@ -115,6 +115,8 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
 
             var concatRef = new MemberReference(strRef, "Concat",
                 MethodSignature.CreateStatic(f.String, f.String, f.String));
+            var concat4Ref = new MemberReference(strRef, "Concat",
+                MethodSignature.CreateStatic(f.String, f.String, f.String, f.String, f.String));
             var containsRef = new MemberReference(strRef, "Contains",
                 MethodSignature.CreateInstance(f.Boolean, f.String));
             var dirExistsRef = new MemberReference(directoryRef, "Exists",
@@ -125,6 +127,11 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
                 MethodSignature.CreateStatic(f.Void, f.String, f.String));
             var pathGetFileNameRef = new MemberReference(pathRef, "GetFileName",
                 MethodSignature.CreateStatic(f.String, f.String));
+            var fileRef = new TypeReference(module, scope, "System.IO", "File");
+            var fileExistsRef = new MemberReference(fileRef, "Exists",
+                MethodSignature.CreateStatic(f.Boolean, f.String));
+            var fileMoveRef = new MemberReference(fileRef, "Move",
+                MethodSignature.CreateStatic(f.Void, f.String, f.String));
 
             var fixType = new TypeDefinition("PclCePatcherFix", "OptiFineInstallerOutputFix",
                 TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed | TypeAttributes.NotPublic,
@@ -158,17 +165,29 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             var localExpected = new CilLocalVariable(f.String);
             var localD = new CilLocalVariable(f.String);
             var localEx = new CilLocalVariable(exceptionRef.ToTypeSignature());
+            var localOldName = new CilLocalVariable(f.String);
+            var localOldJson = new CilLocalVariable(f.String);
+            var localNewJson = new CilLocalVariable(f.String);
+            var localOldJar = new CilLocalVariable(f.String);
+            var localNewJar = new CilLocalVariable(f.String);
             body.LocalVariables.Add(localDir);
             body.LocalVariables.Add(localDirs);
             body.LocalVariables.Add(localI);
             body.LocalVariables.Add(localExpected);
             body.LocalVariables.Add(localD);
             body.LocalVariables.Add(localEx);
+            body.LocalVariables.Add(localOldName);
+            body.LocalVariables.Add(localOldJson);
+            body.LocalVariables.Add(localNewJson);
+            body.LocalVariables.Add(localOldJar);
+            body.LocalVariables.Add(localNewJar);
 
             var lDone = new CilInstructionLabel();
             var lLoop = new CilInstructionLabel();
             var lNext = new CilInstructionLabel();
             var lOkEnd = new CilInstructionLabel();
+            var lSkipJson = new CilInstructionLabel();
+            var lSkipJar = new CilInstructionLabel();
 
             var instrs = body.Instructions;
             var iStart = new CilInstruction(CilOpCodes.Ldarg_0);
@@ -212,8 +231,59 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localD));
             instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
             instrs.Add(new CilInstruction(CilOpCodes.Call, dirMoveRef));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldstr,
-                "[Download] OptiFine 安装器输出的版本文件夹名与 PCL 预期不符，已自动重命名为："));
+            // 文件夹内文件仍是旧名（如 26.2-OptiFine_HD_U_K2_pre5.json/jar），
+            // 合并阶段按 {NameVersion}.json 读取，需同步改名：
+            // oldName = Path.GetFileName(旧文件夹路径)，Move 后文件已位于新路径下、仅文件名为旧名
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localD));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, pathGetFileNameRef));
+            instrs.Add(new CilInstruction(CilOpCodes.Stloc, localOldName));
+            // oldJson = expectedPath + "\\" + oldName + ".json"
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, "\\"));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldName));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, ".json"));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, concat4Ref));
+            instrs.Add(new CilInstruction(CilOpCodes.Stloc, localOldJson));
+            // newJson = expectedPath + "\\" + expectedName + ".json"
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, "\\"));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldarg_1));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, ".json"));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, concat4Ref));
+            instrs.Add(new CilInstruction(CilOpCodes.Stloc, localNewJson));
+            // oldJar = expectedPath + "\\" + oldName + ".jar"
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, "\\"));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldName));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, ".jar"));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, concat4Ref));
+            instrs.Add(new CilInstruction(CilOpCodes.Stloc, localOldJar));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, "\\"));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldarg_1));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, ".jar"));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, concat4Ref));
+            instrs.Add(new CilInstruction(CilOpCodes.Stloc, localNewJar));
+            // if (File.Exists(oldJson)) File.Move(oldJson, newJson);
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldJson));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, fileExistsRef));
+            instrs.Add(new CilInstruction(CilOpCodes.Brfalse, lSkipJson));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldJson));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localNewJson));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, fileMoveRef));
+            var iSkipJson = new CilInstruction(CilOpCodes.Ldloc, localOldJar);
+            lSkipJson.Instruction = iSkipJson;
+            instrs.Add(iSkipJson);
+            // if (File.Exists(oldJar)) File.Move(oldJar, newJar);
+            instrs.Add(new CilInstruction(CilOpCodes.Call, fileExistsRef));
+            instrs.Add(new CilInstruction(CilOpCodes.Brfalse, lSkipJar));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldJar));
+            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localNewJar));
+            instrs.Add(new CilInstruction(CilOpCodes.Call, fileMoveRef));
+            var iSkipJar = new CilInstruction(CilOpCodes.Ldstr,
+                "[Download] OptiFine 安装器输出的版本文件夹名与 PCL 预期不符，已自动重命名为：");
+            lSkipJar.Instruction = iSkipJar;
+            instrs.Add(iSkipJar);
             instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
             instrs.Add(new CilInstruction(CilOpCodes.Call, concatRef));
             instrs.Add(new CilInstruction(CilOpCodes.Ldc_I4_0)); // LogLevel.Normal
