@@ -240,7 +240,7 @@ namespace PCL_CE_Patcher.Core
             {
                 return new List<IPatch>
                 {
-                    new RemovePrecheckPatch(),
+                    new SkipPurchaseHintPatch(),
                     new UnlockProfilePatch(),
                     new RemoveMicrosoftHintPatch(),
                     new RemoveRegionRestrictionPatch(),
