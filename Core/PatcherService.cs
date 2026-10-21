@@ -246,7 +246,8 @@ namespace PCL_CE_Patcher.Core
                     new RemoveRegionRestrictionPatch(),
                     new RemoveTelemetryDialogPatch(),
                     new RemoveTelemetrySettingPatch(),
-                    new FixInstanceResetOptiFinePatch()
+                    new FixInstanceResetOptiFinePatch(),
+                    new FixOptiFineInstallerOutputNamePatch()
                 };
             }
             // Future versions can be added here
