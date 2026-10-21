@@ -54,7 +54,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             {
                 var instr = instructions[i];
                 if (instr.OpCode.Code == CilCode.Stfld &&
-                    instr.Operand is IField field &&
+                    instr.Operand is FieldDefinition field &&
                     field.Name == "DisplayName" &&
                     field.DeclaringType?.Name == "DlOptiFineListEntry")
                 {
@@ -70,7 +70,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             {
                 var instr = instructions[i];
                 if (instr.OpCode.Code == CilCode.Ldfld &&
-                    instr.Operand is IField f &&
+                    instr.Operand is FieldDefinition f &&
                     f.Name == "OptiFine" &&
                     f.DeclaringType?.Name == "McInstanceInfo")
                 {
@@ -91,7 +91,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             {
                 var instr = instructions[i];
                 if (instr.OpCode.Code == CilCode.Stfld &&
-                    instr.Operand is IField jf &&
+                    instr.Operand is FieldDefinition jf &&
                     jf.Name == "optiFineEntry" &&
                     jf.DeclaringType?.Name == "McInstallRequest")
                 {
