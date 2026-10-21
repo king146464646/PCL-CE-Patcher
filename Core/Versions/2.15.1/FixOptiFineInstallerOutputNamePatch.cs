@@ -95,14 +95,6 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             }
             if (downloadInfoField == null) return false;
 
-            // 4. 查找 ModBase.Log 的两个重载（string 4 参 / Exception 5 参，含默认参数）
-            var modBaseType = module.GetAllTypes().FirstOrDefault(t => t.Name == "ModBase");
-            var logString = modBaseType?.Methods.FirstOrDefault(m => m.Name == "Log" &&
-                m.Parameters.Count == 4 && m.Parameters[0].ParameterType?.Name == "String");
-            var logEx = modBaseType?.Methods.FirstOrDefault(m => m.Name == "Log" &&
-                m.Parameters.Count == 5 && m.Parameters[0].ParameterType?.Name == "Exception");
-            if (logString == null || logEx == null) return false;
-
             // 5. 构造辅助方法所需的成员引用，并注入辅助类型与方法
             var f = module.CorLibTypeFactory;
             var strRef = f.String.ToTypeDefOrRef();
@@ -152,7 +144,7 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             //            if (Directory.Exists(expectedPath)) return;   // 名字本来就一致（旧版 OptiFine）
             //            foreach (var d in Directory.GetDirectories(dir))
             //                if (Path.GetFileName(d).Contains("-OptiFine_")) { Directory.Move(d, expectedPath); log; return; }
-            //        } catch (Exception ex) { Log(ex, "..."); }       // 静默失败，绝不抛出
+            //        } catch (Exception) { }                        // 静默失败，绝不抛出
             //    }
             var body = new CilMethodBody(fixMethod);
             fixMethod.CilMethodBody = body;
@@ -164,7 +156,6 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             var localI = new CilLocalVariable(f.Int32);
             var localExpected = new CilLocalVariable(f.String);
             var localD = new CilLocalVariable(f.String);
-            var localEx = new CilLocalVariable(exceptionRef.ToTypeSignature());
             var localOldName = new CilLocalVariable(f.String);
             var localOldJson = new CilLocalVariable(f.String);
             var localNewJson = new CilLocalVariable(f.String);
@@ -175,7 +166,6 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             body.LocalVariables.Add(localI);
             body.LocalVariables.Add(localExpected);
             body.LocalVariables.Add(localD);
-            body.LocalVariables.Add(localEx);
             body.LocalVariables.Add(localOldName);
             body.LocalVariables.Add(localOldJson);
             body.LocalVariables.Add(localNewJson);
@@ -280,17 +270,9 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localOldJar));
             instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localNewJar));
             instrs.Add(new CilInstruction(CilOpCodes.Call, fileMoveRef));
-            var iSkipJar = new CilInstruction(CilOpCodes.Ldstr,
-                "[Download] OptiFine 安装器输出的版本文件夹名与 PCL 预期不符，已自动重命名为：");
+            var iSkipJar = new CilInstruction(CilOpCodes.Br, lDone);
             lSkipJar.Instruction = iSkipJar;
             instrs.Add(iSkipJar);
-            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localExpected));
-            instrs.Add(new CilInstruction(CilOpCodes.Call, concatRef));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldc_I4_0)); // LogLevel.Normal
-            instrs.Add(new CilInstruction(CilOpCodes.Ldnull));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldnull));
-            instrs.Add(new CilInstruction(CilOpCodes.Call, logString));
-            instrs.Add(new CilInstruction(CilOpCodes.Br, lDone));
             var iNext = new CilInstruction(CilOpCodes.Ldloc, localI);
             lNext.Instruction = iNext;
             instrs.Add(iNext);
@@ -301,14 +283,8 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             var iDone = new CilInstruction(CilOpCodes.Leave, lOkEnd);
             lDone.Instruction = iDone;
             instrs.Add(iDone);
-            var iCatch = new CilInstruction(CilOpCodes.Stloc, localEx);
+            var iCatch = new CilInstruction(CilOpCodes.Pop);
             instrs.Add(iCatch);
-            instrs.Add(new CilInstruction(CilOpCodes.Ldloc, localEx));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldstr, "自动重命名 OptiFine 安装器输出文件夹失败"));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldc_I4_2)); // LogLevel.Debug
-            instrs.Add(new CilInstruction(CilOpCodes.Ldnull));
-            instrs.Add(new CilInstruction(CilOpCodes.Ldnull));
-            instrs.Add(new CilInstruction(CilOpCodes.Call, logEx));
             instrs.Add(new CilInstruction(CilOpCodes.Leave, lOkEnd));
             var iEnd = new CilInstruction(CilOpCodes.Ret);
             lOkEnd.Instruction = iEnd;

@@ -247,7 +247,8 @@ namespace PCL_CE_Patcher.Core
                     new RemoveTelemetryDialogPatch(),
                     new RemoveTelemetrySettingPatch(),
                     new FixInstanceResetOptiFinePatch(),
-                    new FixOptiFineInstallerOutputNamePatch()
+                    new FixOptiFineInstallerOutputNamePatch(),
+                    new FixLabyModSelectionPatch()
                 };
             }
             // Future versions can be added here
