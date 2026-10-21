@@ -3,7 +3,7 @@ using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
-using AsmResolver.PE.DotNet.Metadata.Tables;
+using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using PCL_CE_Patcher.Core.Patches;
 
 namespace PCL_CE_Patcher.Core.Versions.v2_15_1
@@ -32,11 +32,11 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             {
                 foreach (var m in type.Methods)
                 {
-                    var body = m.CilMethodBody;
-                    if (body == null) continue;
-                    for (int i = 0; i < body.Instructions.Count; i++)
+                    var mBody = m.CilMethodBody;
+                    if (mBody == null) continue;
+                    for (int i = 0; i < mBody.Instructions.Count; i++)
                     {
-                        var instr = body.Instructions[i];
+                        var instr = mBody.Instructions[i];
                         if (instr.OpCode.Code == CilCode.Call &&
                             instr.Operand is IMethodDescriptor md && md.Name == "McDownloadOptiFineInstall")
                         {
@@ -74,14 +74,14 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
 
             // 3. 定位 DlOptiFineListEntry.NameVersion 字段与闭包中捕获的 downloadInfo 字段
             var entryType = module.GetAllTypes().FirstOrDefault(t => t.Name == "DlOptiFineListEntry");
-            var nameVersionField = entryType?.Fields.FirstOrDefault(f => f.Name == "NameVersion");
+            var nameVersionField = entryType?.Fields.FirstOrDefault(fd => fd.Name == "NameVersion");
             if (entryType == null || nameVersionField == null) return false;
 
             TypeDefinition? closureType = lambda.IsStatic
                 ? lambda.Parameters[0]?.ParameterType?.ToTypeDefOrRef()?.Resolve()
                 : lambda.DeclaringType;
             var downloadInfoField =
-                closureType?.Fields.FirstOrDefault(f => f.FieldType?.Name == "DlOptiFineListEntry");
+                closureType?.Fields.FirstOrDefault(fd => fd.Signature?.FieldType?.Name == "DlOptiFineListEntry");
             if (downloadInfoField == null)
             {
                 // 兜底：从方法体内现有的 ldfld 中复用 DlOptiFineListEntry 类型的字段引用
@@ -106,8 +106,9 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             // 5. 构造辅助方法所需的成员引用，并注入辅助类型与方法
             var f = module.CorLibTypeFactory;
             var strRef = f.String.ToTypeDefOrRef();
-            var scope = module.AssemblyReferences.FirstOrDefault(a => a.Name == "System.Runtime")
-                        ?? (IResolutionScope)module.CorLibModuleRef;
+            var scope = (IResolutionScope?)module.AssemblyReferences.FirstOrDefault(a => a.Name == "System.Runtime")
+                        ?? strRef.Scope
+                        ?? module;
             var directoryRef = new TypeReference(scope, "System.IO", "Directory");
             var pathRef = new TypeReference(scope, "System.IO", "Path");
             var exceptionRef = new TypeReference(scope, "System", "Exception");
@@ -255,11 +256,14 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
 
             // 7. 在 call McDownloadOptiFineInstall 之后插入：
             //    ldloc baseMcFolderHome; ldarg.0; ldfld downloadInfo; ldfld NameVersion; call FixInstallerOutputFolder
-            instructions.Insert(callIndex + 1, new CilInstruction(homeLoad.OpCode, homeLoad.Operand));
-            instructions.Insert(callIndex + 2, new CilInstruction(CilOpCodes.Ldarg_0));
-            instructions.Insert(callIndex + 3, new CilInstruction(CilOpCodes.Ldfld, downloadInfoField));
-            instructions.Insert(callIndex + 4, new CilInstruction(CilOpCodes.Ldfld, nameVersionField));
-            instructions.Insert(callIndex + 5, new CilInstruction(CilOpCodes.Call, fixMethod));
+            instructions.InsertRange(callIndex + 1, new[]
+            {
+                new CilInstruction(homeLoad.OpCode, homeLoad.Operand),
+                new CilInstruction(CilOpCodes.Ldarg_0),
+                new CilInstruction(CilOpCodes.Ldfld, downloadInfoField),
+                new CilInstruction(CilOpCodes.Ldfld, nameVersionField),
+                new CilInstruction(CilOpCodes.Call, fixMethod)
+            });
 
             // 8. 展开所有宏指令（短跳转 → 长跳转、ldloc.N → ldloc 等），避免插入导致既有短跳转偏移溢出
             instructions.ExpandMacros();
