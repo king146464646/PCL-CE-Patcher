@@ -109,9 +109,9 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
             var scope = (IResolutionScope?)module.AssemblyReferences.FirstOrDefault(a => a.Name == "System.Runtime")
                         ?? strRef.Scope
                         ?? module;
-            var directoryRef = new TypeReference(scope, "System.IO", "Directory");
-            var pathRef = new TypeReference(scope, "System.IO", "Path");
-            var exceptionRef = new TypeReference(scope, "System", "Exception");
+            var directoryRef = new TypeReference(module, scope, "System.IO", "Directory");
+            var pathRef = new TypeReference(module, scope, "System.IO", "Path");
+            var exceptionRef = new TypeReference(module, scope, "System", "Exception");
 
             var concatRef = new MemberReference(strRef, "Concat",
                 MethodSignature.CreateStatic(f.String, f.String, f.String));
