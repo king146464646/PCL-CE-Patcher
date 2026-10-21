@@ -1,6 +1,7 @@
 using System.Linq;
 using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
+using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
 using PCL_CE_Patcher.Core.Patches;
 
@@ -41,7 +42,8 @@ namespace PCL_CE_Patcher.Core.Versions.v2_15_1
                     binderType.Namespace == "Microsoft.CSharp.RuntimeBinder")
                 {
                     // 原地替换操作数：Invoke → GetIndex（签名不变，站点 delegate 类型完全兼容）
-                    instr.Operand = new MemberReference(memberRef.Parent, "GetIndex", memberRef.Signature);
+                    instr.Operand = new MemberReference(memberRef.Parent, "GetIndex",
+                        (MemberSignature?)memberRef.Signature);
                     patched = true;
                 }
             }
