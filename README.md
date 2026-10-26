@@ -1,12 +1,12 @@
-﻿<div align="center">
+<div align="center">
 <img src="Resources/icon.png" width="250" height="250" />
 
 # PCL CE Patcher Next
 **针对 PCL2 CE 的第二代自动化修补工具**
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/Zyx-2012/PCL-CE-Patcher-Next?style=flat&logo=github&label=Stars&color=%23ffd548)](https://github.com/Zyx-2012/PCL-CE-Patcher-Next)
-[![GitHub Release](https://img.shields.io/github/v/release/Zyx-2012/PCL-CE-Patcher-Next?label=Release&logo=github)](https://github.com/Zyx-2012/PCL-CE-Patcher-Next/releases)
-[![GitHub License](https://img.shields.io/github/license/Zyx-2012/PCL-CE-Patcher-Next?logo=github&color=blue)](LICENSE)
+[![GitHub Repo stars](https://img.shields.io/github/stars/king146464646/PCL-CE-Patcher?style=flat&logo=github&label=Stars&color=%23ffd548)](https://github.com/king146464646/PCL-CE-Patcher)
+[![GitHub Release](https://img.shields.io/github/v/release/king146464646/PCL-CE-Patcher?label=Release&logo=github)](https://github.com/king146464646/PCL-CE-Patcher/releases)
+[![GitHub License](https://img.shields.io/github/license/king146464646/PCL-CE-Patcher?logo=github&color=blue)](LICENSE)
 [![zread](https://img.shields.io/badge/Ask_Zread-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/Zyx-2012/PCL-CE-Patcher-Next)
 
 </div>
@@ -14,6 +14,7 @@
 ---
 
 <h1>最新支持到 2.15.1 版本</h1>
+<h1>本分支包含AI生成，但已测试过未发现任何问题</h1>
 
 ---
 
@@ -40,7 +41,7 @@
 
 ## 🚀 使用方法
 
-1. 从 [Releases](https://github.com/Zyx-2012/PCL-CE-Patcher-Next/releases) 下载编译好的程序。
+1. 从 [Releases](https://github.com/king146464646/PCL-CE-Patcher/releases) 下载编译好的程序。
 2. 运行 `PCL_CE_Patcher_Next.exe`。
 3. 选择原版 PCL2 CE 的可执行文件（`.exe`）。
 4. 根据您的 PCL2 CE 版本选择对应的破解版本。
@@ -51,12 +52,12 @@
 
 - **不支持的版本**：如果您选择的 PCL2 CE 版本不在支持范围内，程序可能会抛出报错或发生一些不可预料的错误（实际上没那么恐怖）。在条件允许下，请确保您破解的 PCL CE 版本在支持范围内。
 - **其他错误**：如果在修补过程中遇到其他错误，请检查输入文件是否正确。
-- **最后的方法**：如果您试过所有可行的方法，但问题仍然没有得到解决，请向 [这里](https://github.com/Zyx-2012/PCL-CE-Patcher-Next/issues) 投Issue。
+- **最后的方法**：如果您试过所有可行的方法，但问题仍然没有得到解决，请向 [这里](https://github.com/king146464646/PCL-CE-Patcher/issues) 投Issue。
 
 ## 🏗️ 编译指南
 
 如果你希望自行编译本项目：
-- 克隆仓库：`git clone https://github.com/Zyx-2012/PCL-CE-Patcher-Next.git`
+- 克隆仓库：`git clone https://github.com/king146464646/PCL-CE-Patcher.git`
 - 确保安装了 **[.NET 8.0 SDK](https://dotnet.microsoft.com/zh-cn/download/dotnet/8.0)** 或更高版本。
 - 使用 Visual Studio 2022 或通过命令行执行：
 ```bash
@@ -72,6 +73,9 @@
 本项目在开发过程中深受以下项目的启发和支持，特此感谢：
 
 -   **原作者项目**: [Octobersama/PCL-CE-Patcher](https://github.com/Octobersama/PCL-CE-Patcher) (原作者: **Octobersama**)
+-   **二次开发项目**:
+[Zyx-2012/PCL-CE-Patcher-Next](https://github.com/Zyx-2012/PCL-CE-Patcher-Next) (作者: **Zyx-2012**)
+
     
 -   **核心组件**:
     
